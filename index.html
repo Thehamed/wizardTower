@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Confluence Chatbot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <div class="max-w-3xl mx-auto p-6">
+    <header class="mb-6">
+      <h1 class="text-2xl font-bold">Confluence Chatbot</h1>
+      <p class="text-sm text-slate-600">Ask questions grounded in your Confluence space. (Dev UI)</p>
+    </header>
+
+    <section class="bg-white rounded-2xl shadow p-5 space-y-4">
+      <div class="grid gap-3">
+        <label for="question" class="text-sm font-medium">Your question</label>
+        <textarea id="question" class="w-full rounded-xl border border-slate-300 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[90px]" placeholder="e.g., How do I deploy the service?"></textarea>
+      </div>
+
+      <div class="grid gap-3">
+        <label for="email" class="text-sm font-medium">Your email (for permission checks)</label>
+        <input id="email" type="email" class="w-full rounded-xl border border-slate-300 p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="you@company.com" />
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="askBtn" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+          <svg id="spinner" class="hidden h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" class="opacity-25"/>
+            <path d="M12 2a10 10 0 0 1 10 10" class="opacity-75"/>
+          </svg>
+          <span>Ask</span>
+        </button>
+        <button id="clearBtn" class="rounded-xl border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-100">Clear</button>
+      </div>
+
+      <div id="error" class="hidden rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+
+      <div id="answer" class="prose max-w-none"></div>
+      <div id="sources" class="mt-4"></div>
+    </section>
+
+    <footer class="mt-6 text-xs text-slate-500">Dev build • Backend: <code>POST /ask</code> on <code>http://127.0.0.1:8000</code></footer>
+  </div>
+
+  <script>
+    const askBtn = document.getElementById('askBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const qEl = document.getElementById('question');
+    const emailEl = document.getElementById('email');
+    const answerEl = document.getElementById('answer');
+    const sourcesEl = document.getElementById('sources');
+    const errorEl = document.getElementById('error');
+    const spinner = document.getElementById('spinner');
+
+    function setLoading(loading) {
+      askBtn.disabled = loading;
+      spinner.classList.toggle('hidden', !loading);
+    }
+
+    function renderAnswer(ans) {
+      // naive markdown-ish rendering
+      answerEl.innerText = ans || '';
+    }
+
+    function renderSources(list) {
+      sourcesEl.innerHTML = '';
+      if (!list || !list.length) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'rounded-xl border border-slate-200 bg-slate-50 p-3';
+      const title = document.createElement('div');
+      title.className = 'text-sm font-semibold mb-2';
+      title.textContent = 'Sources';
+      wrap.appendChild(title);
+
+      const ul = document.createElement('ul');
+      ul.className = 'list-disc pl-5 space-y-1 text-sm';
+      list.slice(0,5).forEach(s => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = s.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.className = 'text-indigo-600 hover:underline';
+        a.textContent = s.title || s.url;
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+      wrap.appendChild(ul);
+      sourcesEl.appendChild(wrap);
+    }
+
+    async function ask() {
+      errorEl.classList.add('hidden');
+      renderAnswer('');
+      renderSources([]);
+
+      const question = qEl.value.trim();
+      const user_email = emailEl.value.trim() || 'someone@company.com';
+      if (!question) {
+        errorEl.textContent = 'Please type a question first.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await fetch('http://127.0.0.1:8000/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question, user_email })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || 'Request failed');
+        }
+        renderAnswer(data.answer);
+        renderSources(data.sources);
+      } catch (e) {
+        errorEl.textContent = e.message || String(e);
+        errorEl.classList.remove('hidden');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    askBtn.addEventListener('click', ask);
+    clearBtn.addEventListener('click', () => {
+      qEl.value = '';
+      renderAnswer('');
+      renderSources([]);
+      errorEl.classList.add('hidden');
+    });
+
+    // convenience: submit on Ctrl+Enter
+    qEl.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') ask();
+    });
+  </script>
+</body>
+</html>
