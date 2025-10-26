@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+.DS_Store
+
+# Logs and cache
+*.log
+*.cache
+*.pid
+
+# Chroma DB
+chroma/
+*.db
+
+# FastAPI
+*.sqlite
+*.db.sqlite
+
+# VS Code
+.vscode/
+
+# Environment variables
+.env.local
