@@ -7,7 +7,9 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from fastapi.responses import HTMLResponse
 from openai import OpenAI
-
+from sentence_transformers import CrossEncoder
+reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")  # fast & good
+RERANK_TOP_K = 5
 oai = OpenAI(api_key=os.getenv("OPEN_API_KEY"))
 
 client = chromadb.PersistentClient(path="./chroma")  # must match ingest path
@@ -116,3 +118,4 @@ def ask(q: Query):
     
 
     return {"answer": answer_text, "sources": cites[:5]}
+# new
