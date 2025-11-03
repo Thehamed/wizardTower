@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+chromadb
+sentence-transformers
+openai
+requests
+atlassian-python-api
+beautifulsoup4
+markdownify
